@@ -1,0 +1,134 @@
+================================================================================
+                    DAFTAR KREDENSIAL LOGIN
+              Bimbingan Konseling SMK Taruna Bhakti
+================================================================================
+
+Password Default untuk SEMUA akun: password123
+
+================================================================================
+1. SUPER ADMIN
+================================================================================
+Username: superadmin
+Email:    superadmin@smktarunabhakti.sch.id
+Password: password123
+Role:     Super Admin
+Nama:     Super Administrator
+URL:      /login/super_admin
+
+================================================================================
+2. ADMIN
+================================================================================
+Username: admin01
+Email:    admin@smktarunabhakti.sch.id
+Password: password123
+Role:     Admin
+Nama:     Admin BK
+URL:      /login/admin
+
+================================================================================
+3. SISWA
+================================================================================
+
+Siswa 1:
+  NISN:    1234567890
+  Username: siswa001
+  Email:   siswa001@student.smktarunabhakti.sch.id
+  Password: password123
+  Nama:    Ahmad Rizki
+  Kelas:   XII
+  Jurusan: Teknik Informatika
+  URL:     /login/user
+
+Siswa 2:
+  NISN:    1234567891
+  Username: siswa002
+  Email:   siswa002@student.smktarunabhakti.sch.id
+  Password: password123
+  Nama:    Siti Nurhaliza
+  Kelas:   XII
+  Jurusan: Akuntansi
+  URL:     /login/user
+
+Siswa 3:
+  NISN:    1234567892
+  Username: siswa003
+  Email:   siswa003@student.smktarunabhakti.sch.id
+  Password: password123
+  Nama:    Budi Santoso
+  Kelas:   XI
+  Jurusan: Teknik Mesin
+  URL:     /login/user
+
+================================================================================
+4. GURU BK
+================================================================================
+
+Guru 1:
+  Username: sitiaminah
+  Email:    siti.aminah@smktarunabhakti.sch.id
+  Password: password123
+  Nama:     Ibu Siti Aminah, S.Pd
+  Spesialisasi: Konseling Akademik & Karir
+  URL:      /login/guru
+
+Guru 2:
+  Username: ahmadfauzi
+  Email:    ahmad.fauzi@smktarunabhakti.sch.id
+  Password: password123
+  Nama:     Bapak Ahmad Fauzi, M.Pd
+  Spesialisasi: Bimbingan Pribadi & Sosial
+  URL:      /login/guru
+
+Guru 3:
+  Username: dewilestari
+  Email:    dewi.lestari@smktarunabhakti.sch.id
+  Password: password123
+  Nama:     Ibu Dewi Lestari, S.Psi
+  Spesialisasi: Psikologi & Kesehatan Mental
+  URL:      /login/guru
+
+Guru 4:
+  Username: rizkipratama
+  Email:    rizki.pratama@smktarunabhakti.sch.id
+  Password: password123
+  Nama:     Bapak Rizki Pratama, S.Pd
+  Spesialisasi: Pengembangan Diri & Motivasi
+  URL:      /login/guru
+
+Guru 5:
+  Username: fitrihandayani
+  Email:    fitri.handayani@smktarunabhakti.sch.id
+  Password: password123
+  Nama:     Ibu Fitri Handayani, M.Psi
+  Spesialisasi: Konseling Keluarga
+  URL:      /login/guru
+
+Guru 6:
+  Username: andiwijaya
+  Email:    andi.wijaya@smktarunabhakti.sch.id
+  Password: password123
+  Nama:     Bapak Andi Wijaya, S.Pd
+  Spesialisasi: Bimbingan Karir & Prestasi
+  URL:      /login/guru
+
+================================================================================
+CATATAN PENTING
+================================================================================
+
+1. Password untuk SEMUA akun adalah: password123
+2. Untuk login siswa, gunakan NISN sebagai username
+3. Untuk login guru, gunakan email sebagai username
+4. Untuk login admin/super admin, gunakan username atau email
+
+================================================================================
+URL LOGIN
+================================================================================
+
+- Login Siswa:        /login/user
+- Login Guru BK:      /login/guru
+- Login Admin:        /login/admin
+- Login Super Admin:  /login/super_admin
+- Halaman Login:      /login
+
+================================================================================
+
