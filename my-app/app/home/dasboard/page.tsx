@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import type { DashboardSiswa, JadwalKonselingWithRelations } from "@/lib/types/database";
+import type { DashboardSiswa, JadwalKonselingWithRelations } from "@/lib/types";
 
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardSiswa | null>(null);

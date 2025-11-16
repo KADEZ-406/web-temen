@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import type { GuruBK, LayananBK } from "@/lib/types/database";
+import type { GuruBK, LayananBK } from "@/lib/types";
 
 export default function PilihGuruPage() {
   const searchParams = useSearchParams();

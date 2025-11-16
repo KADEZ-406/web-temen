@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { User } from "@/lib/types/database";
+import type { User } from "@/lib/types";
 
 export default function DaftarSiswaPage() {
   const [siswa, setSiswa] = useState<User[]>([]);

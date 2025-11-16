@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import type { HistoryKonselingWithRelations, User, PengaturanUser } from "@/lib/types/database";
+import type { HistoryKonselingWithRelations, User, PengaturanUser } from "@/lib/types";
 
 export default function ProfilePage() {
   

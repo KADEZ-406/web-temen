@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import type { GuruBK } from "@/lib/types/database";
+import type { GuruBK } from "@/lib/types";
 
 type Guru = {
   id: number;

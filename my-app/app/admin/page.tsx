@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { DashboardAdmin, PengaturanSistem } from "@/lib/types/database";
+import type { DashboardAdmin, PengaturanSistem } from "@/lib/types";
 
 export default function AdminDashboard() {
   const [selectedDate, setSelectedDate] = useState('');
