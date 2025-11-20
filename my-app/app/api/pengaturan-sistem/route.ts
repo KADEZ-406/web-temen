@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, execute } from '@/lib/db';
 import type { PengaturanSistem, ApiResponse } from '@/lib/types/database';
 
-// GET: Ambil pengaturan sistem
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -39,7 +38,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PATCH: Update pengaturan sistem
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();

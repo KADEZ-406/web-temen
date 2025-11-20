@@ -1,35 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllSiswa, searchUsers, createUser, usernameExists, emailExists, nisnExists } from '@/lib/db';
-import type { User, ApiResponse, UserCreate } from '@/lib/types/database';
+import { createUser, usernameExists, emailExists, nisnExists } from '@/lib/db';
+import type { ApiResponse, UserCreate } from '@/lib/types/database';
 import bcrypt from 'bcryptjs';
-
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const kelas = searchParams.get('kelas');
-    const jurusan = searchParams.get('jurusan');
-    const search = searchParams.get('search');
-
-    let siswa: User[];
-
-    if (search) {
-      siswa = await searchUsers(search, 'siswa');
-    } else {
-      siswa = await getAllSiswa(kelas || undefined, jurusan || undefined);
-    }
-
-    return NextResponse.json<ApiResponse<User[]>>({
-      success: true,
-      data: siswa,
-    });
-  } catch (error: any) {
-    console.error('Get siswa error:', error);
-    return NextResponse.json<ApiResponse>(
-      { success: false, message: 'Gagal mengambil data siswa', error: error.message },
-      { status: 500 }
-    );
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +10,7 @@ export async function POST(request: NextRequest) {
       username, 
       password, 
       email, 
-      nisn, 
+      nisn,
       nama_lengkap, 
       jenis_kelamin, 
       tanggal_lahir, 
@@ -46,24 +18,8 @@ export async function POST(request: NextRequest) {
       no_telepon, 
       kelas, 
       jurusan, 
-      tahun_masuk,
-      current_user_id,
-      current_user_role
+      tahun_masuk 
     } = body;
-
-    if (!current_user_id || !current_user_role) {
-      return NextResponse.json<ApiResponse>(
-        { success: false, message: 'Autentikasi diperlukan' },
-        { status: 401 }
-      );
-    }
-
-    if (current_user_role !== 'admin') {
-      return NextResponse.json<ApiResponse>(
-        { success: false, message: 'Hanya admin yang dapat menambahkan siswa' },
-        { status: 403 }
-      );
-    }
 
     if (!username || !password || !nama_lengkap) {
       return NextResponse.json<ApiResponse>(
@@ -116,13 +72,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json<ApiResponse<{ id: number }>>({
       success: true,
-      message: 'Siswa berhasil ditambahkan',
+      message: 'Registrasi berhasil. Silakan login.',
       data: { id: userId },
     });
   } catch (error: any) {
-    console.error('Create siswa error:', error);
+    console.error('Register error:', error);
     return NextResponse.json<ApiResponse>(
-      { success: false, message: 'Gagal menambahkan siswa', error: error.message },
+      { success: false, message: 'Gagal melakukan registrasi', error: error.message },
       { status: 500 }
     );
   }

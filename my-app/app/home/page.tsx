@@ -10,20 +10,111 @@ type Guru = {
   name: string;
   specialty: string;
   image: string;
-  layanan?: string[];
 };
+
+interface JadwalGuru {
+  id: number;
+  tanggal: string;
+  waktu_mulai: string;
+  waktu_selesai: string;
+  nama_siswa: string;
+  nama_layanan: string;
+  status: string;
+}
+
+interface JadwalItem {
+  id?: number;
+  tanggal: string;
+  waktu_mulai: string;
+  waktu_selesai: string;
+  nama_siswa?: string;
+  nama_layanan?: string;
+  status?: string;
+  isAvailable?: boolean;
+}
 
 export default function HomePage() {
   const [selectedGuru, setSelectedGuru] = useState<Guru | null>(null);
   const [guruBK, setGuruBK] = useState<Guru[]>([]);
+  const [filteredGuruBK, setFilteredGuruBK] = useState<Guru[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<{ role?: string } | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchDate, setSearchDate] = useState('');
+  const [availableSlots, setAvailableSlots] = useState<{[key: number]: number}>({});
+  const [jadwalGuru, setJadwalGuru] = useState<JadwalGuru[]>([]);
+  const [loadingJadwal, setLoadingJadwal] = useState(false);
+  const [jadwalItems, setJadwalItems] = useState<JadwalItem[]>([]);
+  const [selectedDate, setSelectedDate] = useState('');
 
   useEffect(() => {
-    fetchGuruBK();
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        
+        if (parsedUser.role === 'guru') {
+          window.location.href = '/guru/dashboard';
+          return;
+        }
+        if (parsedUser.role === 'admin') {
+          window.location.href = '/admin';
+          return;
+        }
+        
+        if (parsedUser.role === 'siswa') {
+          fetchGuruBK();
+        }
+      } else {
+        fetchGuruBK();
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    if (searchTerm || searchDate) {
+      let filtered = guruBK;
+      
+      if (searchTerm) {
+        filtered = filtered.filter(guru => 
+          guru.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          guru.specialty.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      
+      setFilteredGuruBK(filtered);
+      
+      if (searchDate) {
+        filtered.forEach(guru => {
+          fetchAvailableSlotsCount(guru.id, searchDate);
+        });
+      }
+    } else {
+      setFilteredGuruBK(guruBK);
+      setAvailableSlots({});
+    }
+  }, [searchTerm, searchDate, guruBK]);
+
+  const fetchAvailableSlotsCount = async (guruId: number, tanggal: string) => {
+    try {
+      const response = await fetch(`/api/guru/${guruId}/jadwal-tersedia?tanggal=${tanggal}`);
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setAvailableSlots(prev => ({
+          ...prev,
+          [guruId]: data.data.available_slots?.length || 0
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching available slots:', error);
+    }
+  };
 
   const fetchGuruBK = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/guru?is_active=true');
       const data = await response.json();
       
@@ -32,355 +123,397 @@ export default function HomePage() {
           id: guru.id,
           name: guru.nama_lengkap,
           specialty: guru.spesialisasi || 'Bimbingan Konseling',
-          image: guru.foto_profil || `https://ui-avatars.com/api/?name=${encodeURIComponent(guru.nama_lengkap)}&size=200&background=3b82f6&color=fff`,
+          image: guru.foto_profil || `https://ui-avatars.com/api/?name=${encodeURIComponent(guru.nama_lengkap)}&size=200&background=2563eb&color=fff`,
           layanan: [],
         }));
         setGuruBK(formattedGurus);
+        setFilteredGuruBK(formattedGurus);
       }
     } catch (error) {
       console.error('Error fetching guru:', error);
-      // Fallback ke data default jika error
-      setGuruBK([
-        {
-          id: 1,
-          name: "Ibu Siti Aminah, S.Pd",
-          specialty: "Konseling Akademik & Karir",
-          image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&h=200&fit=crop"
-        },
-        {
-          id: 2,
-          name: "Bapak Ahmad Fauzi, M.Pd",
-          specialty: "Bimbingan Pribadi & Sosial",
-          image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop"
-        },
-        {
-          id: 3,
-          name: "Ibu Dewi Lestari, S.Psi",
-          specialty: "Psikologi & Kesehatan Mental",
-          image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop"
-        },
-        {
-          id: 4,
-          name: "Bapak Rizki Pratama, S.Pd",
-          specialty: "Pengembangan Diri & Motivasi",
-          image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop"
-        },
-        {
-          id: 5,
-          name: "Ibu Fitri Handayani, M.Psi",
-          specialty: "Konseling Keluarga",
-          image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop"
-        },
-        {
-          id: 6,
-          name: "Bapak Andi Wijaya, S.Pd",
-          specialty: "Bimbingan Karir & Prestasi",
-          image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop"
-        }
-      ]);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (selectedGuru) {
+      fetchJadwalGuru(selectedGuru.id);
+      const today = new Date().toISOString().split('T')[0];
+      setSelectedDate(today);
+    } else {
+      setJadwalGuru([]);
+      setJadwalItems([]);
+      setSelectedDate('');
+    }
+  }, [selectedGuru]);
+
+  useEffect(() => {
+    if (selectedGuru && selectedDate) {
+      fetchJadwalWithSlots(selectedGuru.id, selectedDate);
+    }
+  }, [selectedDate, selectedGuru]);
+
+  const fetchJadwalGuru = async (guruId: number) => {
+    try {
+      setLoadingJadwal(true);
+      const response = await fetch(`/api/jadwal?guru_id=${guruId}`);
+      const data = await response.json();
+      
+      if (data.success && data.data && Array.isArray(data.data)) {
+        const today = new Date().toISOString().split('T')[0];
+        const upcomingJadwal = data.data
+          .filter((j: JadwalGuru) => {
+            if (!j || !j.tanggal) return false;
+            const jadwalDate = j.tanggal;
+            return jadwalDate >= today;
+          })
+          .sort((a: JadwalGuru, b: JadwalGuru) => {
+            if (!a.tanggal || !b.tanggal) return 0;
+            const dateA = new Date(`${a.tanggal} ${a.waktu_mulai || '00:00:00'}`).getTime();
+            const dateB = new Date(`${b.tanggal} ${b.waktu_mulai || '00:00:00'}`).getTime();
+            return dateA - dateB;
+          });
+        
+        setJadwalGuru(upcomingJadwal);
+      } else {
+        setJadwalGuru([]);
+      }
+    } catch (error) {
+      console.error('Error fetching jadwal guru:', error);
+      setJadwalGuru([]);
+    } finally {
+      setLoadingJadwal(false);
+    }
+  };
+
+  const fetchJadwalWithSlots = async (guruId: number, tanggal: string) => {
+    try {
+      const [jadwalResponse, slotsResponse] = await Promise.all([
+        fetch(`/api/jadwal?guru_id=${guruId}`),
+        fetch(`/api/guru/${guruId}/jadwal-tersedia?tanggal=${tanggal}`)
+      ]);
+
+      const jadwalData = await jadwalResponse.json();
+      const slotsData = await slotsResponse.json();
+
+      const bookedJadwal: JadwalItem[] = [];
+      if (jadwalData.success && jadwalData.data && Array.isArray(jadwalData.data)) {
+        jadwalData.data
+          .filter((j: JadwalGuru) => j.tanggal === tanggal)
+          .forEach((j: JadwalGuru) => {
+            bookedJadwal.push({
+              id: j.id,
+              tanggal: j.tanggal,
+              waktu_mulai: j.waktu_mulai,
+              waktu_selesai: j.waktu_selesai,
+              nama_siswa: j.nama_siswa,
+              nama_layanan: j.nama_layanan,
+              status: j.status,
+              isAvailable: false,
+            });
+          });
+      }
+
+      const availableSlots: JadwalItem[] = [];
+      if (slotsData.success && slotsData.data && slotsData.data.available_slots) {
+        slotsData.data.available_slots.forEach((slot: { start: string; end: string }) => {
+          availableSlots.push({
+            tanggal: tanggal,
+            waktu_mulai: slot.start,
+            waktu_selesai: slot.end,
+            isAvailable: true,
+          });
+        });
+      }
+
+      const allJadwal = [...bookedJadwal, ...availableSlots].sort((a, b) => {
+        const timeA = a.waktu_mulai || '00:00';
+        const timeB = b.waktu_mulai || '00:00';
+        return timeA.localeCompare(timeB);
+      });
+
+      setJadwalItems(allJadwal);
+    } catch (error) {
+      console.error('Error fetching jadwal with slots:', error);
+      setJadwalItems([]);
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: { [key: string]: string } = {
+      'menunggu': 'Menunggu',
+      'dijadwalkan': 'Dijadwalkan',
+      'berlangsung': 'Berlangsung',
+      'selesai': 'Selesai',
+      'dibatalkan': 'Dibatalkan'
+    };
+    return labels[status] || status;
+  };
+
   return (
-    <div className="min-h-screen bg-gray-900 transition-colors duration-300">
-      {/* Gooey Navigation */}
-      <nav className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-[95%] max-w-6xl">
-        <div className="relative gooey-nav overflow-hidden">
-          {/* Animated Blobs */}
-          <div className="gooey-blob gooey-blob-1"></div>
-          <div className="gooey-blob gooey-blob-2"></div>
-          
-          <div className="relative z-10 container mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <Link href="/" className="flex items-center gap-3 group">
-                <div className="relative w-12 h-12 transition-transform group-hover:scale-110">
-                  <Image
-                    src="https://smktarunabhakti.sch.id/wp-content/uploads/2020/07/logotbvector-copy.png"
-                    alt="Logo SMK Taruna Bhakti"
-                    width={48}
-                    height={48}
-                    className="object-contain"
-                    priority
-                    unoptimized
-                  />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-white ">Bimbingan Konseling</div>
-                  <div className="text-xs text-gray-400 ">SMK Taruna Bhakti</div>
-                </div>
-              </Link>
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/home"
-                  className="px-5 py-2.5 rounded-xl text-blue-400 font-semibold bg-blue-900/30 relative group"
-                >
-                  Home
-                  <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                </Link>
-                <Link
-                  href="/home/dasboard"
-                  className="px-5 py-2.5 rounded-xl text-gray-300 hover:text-blue-400 hover:bg-blue-900/20 transition-all duration-300 font-medium relative group"
-                >
-                  Dashboard
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-400 group-hover:w-full transition-all duration-300"></span>
-                </Link>
-                <Link
-                  href="/profile"
-                  className="px-5 py-2.5 rounded-xl text-gray-300 hover:text-blue-400 hover:bg-blue-900/20 transition-all duration-300 font-medium relative group"
-                >
-                  Profile
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-400 group-hover:w-full transition-all duration-300"></span>
-                </Link>
-                <div className="ml-2 pl-2 border-l border-gray-600 ">
-                  <Link
-                    href="/login/guru"
-                    className="px-5 py-2.5 rounded-xl text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/20 transition-all duration-300 font-medium relative group"
-                  >
-                    Login Guru
-                    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-emerald-400 group-hover:w-full transition-all duration-300"></span>
-                  </Link>
-                </div>
+    <div className="min-h-screen bg-white">
+      <nav className="border-b border-[#A1BC98] bg-white sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="relative w-10 h-10">
+                <Image
+                  src="https://smktarunabhakti.sch.id/wp-content/uploads/2020/07/logotbvector-copy.png"
+                  alt="Logo SMK Taruna Bhakti"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  priority
+                  unoptimized
+                />
               </div>
+              <div className="text-sm font-semibold text-[#778873]">
+                BK SMK Taruna Bhakti
+              </div>
+            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href={
+                  user?.role === 'siswa' 
+                    ? '/home' 
+                    : user?.role === 'guru' 
+                    ? '/guru/dashboard' 
+                    : user?.role === 'admin'
+                    ? '/admin'
+                    : '/home'
+                }
+                className="px-4 py-2 text-[#778873] border border-[#778873] rounded hover:bg-[#778873] hover:text-white transition-colors"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/profile"
+                className="px-4 py-2 text-[#778873] hover:text-[#778873]"
+              >
+                Profile
+              </Link>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section dengan Background Image */}
-      <section className="pt-48 pb-40 px-6 relative overflow-hidden min-h-[600px]">
-        {/* Background Image dengan Blur - Hanya di Hero Section */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="https://lh3.googleusercontent.com/gps-cs-s/AG0ilSwmtMlJl_cZDFJKXP6TlQ3BKtxaceL1YGDvr3vToK0vwFjRjYCm1vSBrwYU06ISxE9jOqVAgr0LCHYnA_WLUVSaySoG4y8DLNuLLZMLm2E_XF6vQgFJQtSD_zwTOpyXolHGmxsclQ=s1360-w1360-h1020-rw"
-            alt="SMK Taruna Bhakti"
-            fill
-            className="object-cover"
-            priority
-            unoptimized
-          />
-          <div className="absolute inset-0 backdrop-blur-md bg-black/50  transition-all duration-300"></div>
-        </div>
-        
-        <div className="max-w-7xl mx-auto relative z-10 mt-8">
-          <div className="text-center mb-20">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 transition-colors duration-300">
-              Selamat Datang di <br />
-              <span className="text-blue-600  transition-colors duration-300">Bimbingan Konseling</span>
-            </h1>
-            <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto transition-colors duration-300">
-              Pilih guru BK untuk konsultasi dan bimbingan sesuai kebutuhan Anda
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* About Section */}
-      <section className="py-20 px-6 bg-gray-900 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 transition-colors duration-300">
-              Tentang <span className="text-blue-600  transition-colors duration-300">BK SMK Taruna Bhakti</span>
-            </h2>
-            <p className="text-lg text-gray-400 max-w-3xl mx-auto transition-colors duration-300">
-              Layanan Bimbingan dan Konseling SMK Taruna Bhakti hadir untuk membantu siswa dalam pengembangan akademik, pribadi, sosial, dan karir. Kami berkomitmen memberikan bimbingan terbaik untuk masa depan cerah Anda.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-blue-900/50 to-blue-800/50 rounded-2xl p-8 text-center transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl border border-blue-700 ">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-xl mb-3 text-white transition-colors duration-300">Tim Profesional</h3>
-              <p className="text-gray-400 transition-colors duration-300">6 Guru BK bersertifikat dan berpengalaman</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-green-900/50 to-green-800/50 rounded-2xl p-8 text-center transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl border border-green-700 ">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-xl mb-3 text-white transition-colors duration-300">Layanan Ramah</h3>
-              <p className="text-gray-400 transition-colors duration-300">Konsultasi personal dan konfidensial</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/50 rounded-2xl p-8 text-center transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl border border-purple-700 ">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-xl mb-3 text-white transition-colors duration-300">Bimbingan Karir</h3>
-              <p className="text-gray-400 transition-colors duration-300">Panduan untuk masa depan cerah</p>
-            </div>
-
-            <div className="bg-gradient-to-br from-orange-900/50 to-orange-800/50 rounded-2xl p-8 text-center transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl border border-orange-700 ">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-xl mb-3 text-white transition-colors duration-300">Prestasi Siswa</h3>
-              <p className="text-gray-400 transition-colors duration-300">Mendukung pengembangan potensi</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Guru BK Section */}
-      <section id="pilih-guru" className="py-20 px-6 bg-gradient-to-br from-gray-900 to-gray-800 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 transition-colors duration-300">
-              Tim <span className="text-blue-600  transition-colors duration-300">Guru BK</span> Kami
-            </h2>
-            <p className="text-lg text-gray-400 transition-colors duration-300">
-              Pilih guru BK yang sesuai dengan kebutuhan konseling Anda
-            </p>
-          </div>
+      <div className="max-w-6xl mx-auto px-6 py-16">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-[#778873] mb-4">
+            Pilih Guru BK
+          </h1>
+          <p className="text-[#778873]/70 mb-6">
+            Pilih guru BK yang sesuai dengan kebutuhan konseling Anda
+          </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {loading ? (
-              <div className="col-span-full text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-gray-400 ">Memuat data guru...</p>
-              </div>
-            ) : guruBK.length === 0 ? (
-              <div className="col-span-full text-center py-12">
-                <p className="text-gray-400 ">Belum ada data guru BK</p>
-              </div>
-            ) : (
-              guruBK.map((guru) => (
+          <div className="max-w-2xl mx-auto space-y-4">
+            <div>
+              <input
+                type="text"
+                placeholder="Cari guru BK (nama atau spesialisasi)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+              />
+            </div>
+            <div>
+              <input
+                type="date"
+                placeholder="Pilih tanggal untuk melihat jadwal tersedia"
+                value={searchDate}
+                onChange={(e) => setSearchDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#778873]"></div>
+            <p className="mt-4 text-[#778873]/70">Memuat data...</p>
+          </div>
+        ) : guruBK.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-[#778873]/70">Belum ada data guru BK</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredGuruBK.map((guru) => (
               <div
                 key={guru.id}
                 onClick={() => setSelectedGuru(guru)}
-                className="group bg-gray-900 rounded-2xl overflow-hidden cursor-pointer transform hover:scale-105 hover:shadow-2xl transition-all duration-300 shadow-lg border border-gray-700 "
+                className="bg-white border border-[#A1BC98] rounded p-6 cursor-pointer hover:border-[#778873] transition-colors"
               >
-                <div className="p-6">
-                  <div className="flex items-start space-x-4 mb-4">
-                    <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-4 border-blue-500  flex-shrink-0 group-hover:border-blue-600 transition-colors shadow-lg">
-                      <Image
-                        src={guru.image}
-                        alt={guru.name}
-                        width={96}
-                        height={96}
-                        className="w-full h-full object-cover"
-                        unoptimized
-                      />
-                    </div>
-                    <div className="flex-1 pt-2">
-                      <h3 className="text-lg font-bold text-white mb-2 group-hover:text-blue-600 transition-colors">
-                        {guru.name}
-                      </h3>
-                      <p className="text-sm text-gray-400 leading-relaxed">
-                        {guru.specialty}
-                      </p>
-                    </div>
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#778873]">
+                    <Image
+                      src={guru.image}
+                      alt={guru.name}
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-cover"
+                      unoptimized
+                    />
                   </div>
-                  <button className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700   text-white rounded-xl font-semibold transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105">
-                    Pilih Guru
-                  </button>
+                  <div>
+                    <h3 className="font-semibold text-[#778873]">{guru.name}</h3>
+                    <p className="text-sm text-[#778873]/70">{guru.specialty}</p>
+                    {searchDate && availableSlots[guru.id] !== undefined && (
+                      <p className="text-xs text-[#778873]/70 mt-1">
+                        {availableSlots[guru.id]} slot tersedia
+                      </p>
+                    )}
+                  </div>
                 </div>
+                <Link
+                  href={`/pilih-guru?guru_id=${guru.id}${searchDate ? `&tanggal=${searchDate}` : ''}`}
+                  className="block w-full py-2 bg-[#778873] text-white text-center rounded hover:bg-[#778873] transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Pilih Guru
+                </Link>
               </div>
-            ))
-            )}
+            ))}
           </div>
-        </div>
-      </section>
+        )}
+      </div>
 
-      {/* Modal */}
       {selectedGuru && (
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
+          className="fixed inset-0 bg-[#778873]/50 flex items-center justify-center z-50 p-4 overflow-y-auto"
           onClick={() => setSelectedGuru(null)}
         >
           <div 
-            className="max-w-md w-full rounded-2xl p-8 bg-gray-900 transform transition-all duration-300 shadow-2xl border border-gray-700 "
+            className="bg-white rounded-lg p-8 max-w-3xl w-full border border-[#A1BC98] my-8 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-32 h-32 mx-auto mb-6 rounded-2xl overflow-hidden border-4 border-blue-500  shadow-xl">
-              <Image
-                src={selectedGuru.image}
-                alt={selectedGuru.name}
-                width={128}
-                height={128}
-                className="w-full h-full object-cover"
-                unoptimized
-              />
+            <div className="text-center mb-6">
+              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#778873] mx-auto mb-4">
+                <Image
+                  src={selectedGuru.image}
+                  alt={selectedGuru.name}
+                  width={96}
+                  height={96}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                />
+              </div>
+              <h3 className="text-xl font-semibold text-[#778873] mb-2">{selectedGuru.name}</h3>
+              <p className="text-[#778873]/70">{selectedGuru.specialty}</p>
             </div>
-            <h3 className="text-2xl font-bold text-center mb-2 text-white ">{selectedGuru.name}</h3>
-            <p className="text-center mb-8 text-gray-400 ">{selectedGuru.specialty}</p>
-            <Link
-              href={`/pilih-guru?guru_id=${selectedGuru.id}`}
-              className="block w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-semibold transition-all duration-300 mb-3 text-center shadow-md hover:shadow-lg"
-            >
-              Buat Janji Konsultasi
-            </Link>
-            <button 
-              onClick={() => setSelectedGuru(null)}
-              className="w-full py-3 bg-gray-200  hover:bg-gray-600 text-white rounded-xl font-semibold transition-colors duration-300"
-            >
-              Tutup
-            </button>
+
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-[#778873]">Jadwal Konseling</h4>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="px-3 py-1 border border-[#A1BC98] rounded text-sm focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+                />
+              </div>
+              {loadingJadwal ? (
+                <div className="text-center py-4">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#778873]"></div>
+                  <p className="mt-2 text-sm text-[#778873]/70">Memuat jadwal...</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {jadwalItems.length === 0 ? (
+                    <div className="text-center py-4 text-[#778873]/70">
+                      <p>Belum ada jadwal untuk tanggal ini</p>
+                    </div>
+                  ) : (
+                    jadwalItems.map((item, index) => (
+                      item.isAvailable ? (
+                        <Link
+                          key={`slot-${index}`}
+                          href={`/pilih-guru?guru_id=${selectedGuru.id}&tanggal=${item.tanggal}&waktu_mulai=${item.waktu_mulai}&waktu_selesai=${item.waktu_selesai}`}
+                          className="block border-2 border-dashed border-[#A1BC98] rounded p-4 hover:bg-[#F1F3E0] hover:border-[#778873] transition-colors cursor-pointer"
+                          onClick={() => setSelectedGuru(null)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-[#778873] mb-1">
+                                {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                }) : '-'}
+                              </div>
+                              <div className="text-sm text-[#778873]/70">
+                                {item.waktu_mulai || '-'} - {item.waktu_selesai || '-'}
+                              </div>
+                            </div>
+                            <span className="px-3 py-1 rounded text-xs font-medium bg-green-100 text-green-700 shrink-0">
+                              Tersedia
+                            </span>
+                          </div>
+                        </Link>
+                      ) : (
+                        <div
+                          key={item.id || `booked-${index}`}
+                          className="border border-[#A1BC98] rounded p-4 bg-[#F1F3E0]"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-[#778873] mb-1">
+                                {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                }) : '-'}
+                              </div>
+                              <div className="text-sm text-[#778873]/70 mb-1">
+                                {item.waktu_mulai || '-'} - {item.waktu_selesai || '-'}
+                              </div>
+                              {item.nama_siswa ? (
+                                <div className="text-sm text-[#778873]/70 mb-1">
+                                  Siswa: {item.nama_siswa}
+                                </div>
+                              ) : null}
+                              {item.nama_layanan ? (
+                                <div className="text-sm text-[#778873]/70">
+                                  Layanan: {item.nama_layanan}
+                                </div>
+                              ) : null}
+                            </div>
+                            <span className="px-3 py-1 rounded text-xs font-medium bg-[#D2DCB6] text-[#778873] shrink-0">
+                              {getStatusLabel(item.status || 'menunggu')}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Link
+                href={`/pilih-guru?guru_id=${selectedGuru.id}${searchDate ? `&tanggal=${searchDate}` : ''}`}
+                className="flex-1 py-2 bg-[#778873] text-white text-center rounded hover:bg-[#778873] transition-colors"
+                onClick={() => setSelectedGuru(null)}
+              >
+                Buat Janji
+              </Link>
+              <button 
+                onClick={() => setSelectedGuru(null)}
+                className="flex-1 py-2 border border-[#778873] text-[#778873] rounded hover:bg-[#F1F3E0] transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Footer */}
-      <footer className="py-12 px-6 bg-gray-800 border-t border-gray-700 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-            <div>
-              <h4 className="font-bold text-lg mb-4 text-white transition-colors duration-300">Kontak</h4>
-              <div className="space-y-2 text-gray-400 transition-colors duration-300">
-                <div className="flex items-center justify-center md:justify-start space-x-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <span>(021) 1234-5678</span>
-                </div>
-                <div className="flex items-center justify-center md:justify-start space-x-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <span>bk@smktarunabhakti.sch.id</span>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-bold text-lg mb-4 text-white transition-colors duration-300">Alamat</h4>
-              <div className="flex items-center justify-center md:justify-start space-x-2 text-gray-400 transition-colors duration-300">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>Jl. Pendidikan No. 123, Jakarta</span>
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-bold text-lg mb-4 text-white transition-colors duration-300">Media Sosial</h4>
-              <div className="flex justify-center md:justify-start space-x-4">
-                <a href="#" className="text-gray-400 hover:text-blue-600  transition-colors duration-300">Instagram</a>
-                <a href="#" className="text-gray-400 hover:text-blue-600  transition-colors duration-300">Facebook</a>
-                <a href="#" className="text-gray-400 hover:text-blue-600  transition-colors duration-300">Twitter</a>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-8 pt-8 text-center border-t border-gray-600 ">
-            <p className="text-gray-400 transition-colors duration-300">
-              © 2024 SMK Taruna Bhakti. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

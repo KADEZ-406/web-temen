@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, execute } from '@/lib/db';
 
-// GET: Ambil jadwal konseling
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -46,9 +45,27 @@ export async function GET(request: NextRequest) {
 
     const jadwal = await query<any>(sql, params);
 
+    const safeJadwal = (jadwal || []).map((j: any) => ({
+      id: j.id || 0,
+      siswa_id: j.siswa_id || 0,
+      guru_id: j.guru_id || 0,
+      layanan_id: j.layanan_id || 0,
+      tanggal: j.tanggal || '',
+      waktu_mulai: j.waktu_mulai || '',
+      waktu_selesai: j.waktu_selesai || '',
+      alasan_konseling: j.alasan_konseling || '',
+      status: j.status || 'menunggu',
+      nama_siswa: j.nama_siswa || '',
+      nisn: j.nisn || '',
+      nama_guru: j.nama_guru || '',
+      foto_guru: j.foto_guru || '',
+      nama_layanan: j.nama_layanan || '',
+      warna: j.warna || '',
+    }));
+
     return NextResponse.json({
       success: true,
-      data: jadwal,
+      data: safeJadwal,
     });
   } catch (error: any) {
     console.error('Get jadwal error:', error);
@@ -59,7 +76,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: Buat jadwal konseling baru
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -68,6 +84,26 @@ export async function POST(request: NextRequest) {
     if (!siswa_id || !guru_id || !layanan_id || !tanggal || !waktu_mulai || !waktu_selesai || !alasan_konseling) {
       return NextResponse.json(
         { success: false, message: 'Semua field harus diisi' },
+        { status: 400 }
+      );
+    }
+
+    const conflictingJadwal = await query<any>(
+      `SELECT id FROM jadwal_konseling 
+       WHERE guru_id = ? AND tanggal = ? 
+       AND status IN ('menunggu', 'dijadwalkan', 'berlangsung')
+       AND deleted_at IS NULL
+       AND (
+         (waktu_mulai <= ? AND waktu_selesai > ?) OR
+         (waktu_mulai < ? AND waktu_selesai >= ?) OR
+         (waktu_mulai >= ? AND waktu_selesai <= ?)
+       )`,
+      [guru_id, tanggal, waktu_mulai, waktu_mulai, waktu_selesai, waktu_selesai, waktu_mulai, waktu_selesai]
+    );
+
+    if (conflictingJadwal.length > 0) {
+      return NextResponse.json(
+        { success: false, message: 'Jadwal yang dipilih sudah terisi. Silakan pilih waktu lain.' },
         { status: 400 }
       );
     }

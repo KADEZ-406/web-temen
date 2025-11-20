@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-// GET: Ambil semua layanan BK
 export async function GET() {
   try {
     const layanan = await query<any>(

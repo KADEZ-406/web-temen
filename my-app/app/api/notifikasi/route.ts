@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, execute } from '@/lib/db';
 import type { Notifikasi, NotifikasiCreate, ApiResponse } from '@/lib/types/database';
 
-// GET: Ambil notifikasi user
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -43,7 +42,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: Buat notifikasi baru
 export async function POST(request: NextRequest) {
   try {
     const body: NotifikasiCreate = await request.json();
@@ -75,7 +73,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH: Update status read notifikasi
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();

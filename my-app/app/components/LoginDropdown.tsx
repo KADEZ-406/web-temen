@@ -24,7 +24,7 @@ export default function LoginDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-4 py-2 text-gray-300 hover:text-blue-600 transition-colors flex items-center gap-2"
+        className="px-4 py-2 text-gray-300 hover:text-[#778873] transition-colors flex items-center gap-2"
       >
         Login
         <svg
@@ -41,7 +41,7 @@ export default function LoginDropdown() {
         <div className="absolute right-0 mt-2 w-48 bg-gray-900 rounded-lg shadow-xl border border-gray-700 py-2 z-50">
           <Link
             href="/login?role=user"
-            className="block px-4 py-2 text-gray-300 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+            className="block px-4 py-2 text-gray-300 hover:bg-[#F1F3E0] hover:text-[#778873] transition-colors"
             onClick={() => setIsOpen(false)}
           >
             <div className="flex items-center gap-2">
@@ -53,7 +53,7 @@ export default function LoginDropdown() {
           </Link>
           <Link
             href="/login?role=admin"
-            className="block px-4 py-2 text-gray-300 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+            className="block px-4 py-2 text-gray-300 hover:bg-[#F1F3E0] hover:text-[#778873] transition-colors"
             onClick={() => setIsOpen(false)}
           >
             <div className="flex items-center gap-2">
@@ -65,7 +65,7 @@ export default function LoginDropdown() {
           </Link>
           <Link
             href="/login?role=admin-super"
-            className="block px-4 py-2 text-gray-300 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+            className="block px-4 py-2 text-gray-300 hover:bg-[#F1F3E0] hover:text-[#778873] transition-colors"
             onClick={() => setIsOpen(false)}
           >
             <div className="flex items-center gap-2">

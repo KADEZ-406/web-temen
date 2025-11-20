@@ -3,7 +3,7 @@
 // TypeScript types untuk semua tabel database
 // ============================================
 
-export type UserRole = 'siswa' | 'admin' | 'super_admin' | 'guru';
+export type UserRole = 'siswa' | 'admin' | 'guru';
 export type JenisKelamin = 'L' | 'P';
 export type JadwalStatus = 'menunggu' | 'dijadwalkan' | 'berlangsung' | 'selesai' | 'dibatalkan' | 'tidak_hadir';
 export type HistoryStatus = 'selesai' | 'dibatalkan' | 'tidak_hadir';

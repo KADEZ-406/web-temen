@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 export async function POST(request: NextRequest): Promise<NextResponse<LoginResponse>> {
   try {
     const body = await request.json();
-    const { username, password, role } = body;
+    const { username, password } = body;
 
     if (!username || !password) {
       return NextResponse.json(
@@ -15,11 +15,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<LoginResp
       );
     }
 
-    // Query user berdasarkan username, email, atau nisn
+    // Coba cari user tanpa filter role dulu (deteksi otomatis)
     let user;
     try {
-      user = await getUserByIdentifier(username, role || 'siswa');
-      console.log('User lookup:', { username, role: role || 'siswa', found: !!user });
+      user = await getUserByIdentifier(username);
     } catch (dbError: any) {
       console.error('Database error:', dbError);
       return NextResponse.json(
@@ -33,14 +32,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<LoginResp
     }
 
     if (!user) {
-      console.log('User not found:', { username, role: role || 'siswa' });
+      console.log('User not found:', { username });
       return NextResponse.json(
         { success: false, message: 'Username atau password salah' },
         { status: 401 }
       );
     }
 
-    // Verifikasi password
     if (!user.password_hash) {
       return NextResponse.json(
         { success: false, message: 'Data user tidak valid' },
@@ -48,13 +46,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<LoginResp
       );
     }
 
-    console.log('Password verification:', { 
-      hasPasswordHash: !!user.password_hash,
-      passwordHashLength: user.password_hash?.length 
-    });
-    
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    console.log('Password match:', isPasswordValid);
     
     if (!isPasswordValid) {
       return NextResponse.json(
@@ -63,15 +55,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<LoginResp
       );
     }
 
-    // Update last login
     try {
       await updateLastLogin(user.id);
     } catch (updateError) {
-      // Log error but don't fail login
       console.error('Failed to update last login:', updateError);
     }
 
-    // Hapus password_hash dari response
     const { password_hash, ...userWithoutPassword } = user;
 
     return NextResponse.json({

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, execute } from '@/lib/db';
 import type { PeriodePemilihan, ApiResponse } from '@/lib/types/database';
 
-// GET: Ambil semua periode pemilihan
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -33,7 +32,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: Buat periode pemilihan baru
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -46,7 +44,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Jika ada periode aktif, nonaktifkan dulu
     if (is_active) {
       await execute(`UPDATE periode_pemilihan SET is_active = FALSE WHERE is_active = TRUE`);
     }
@@ -72,7 +69,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH: Update periode pemilihan
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
@@ -85,7 +81,6 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Jika mengaktifkan periode, nonaktifkan yang lain
     if (updates.is_active) {
       await execute(`UPDATE periode_pemilihan SET is_active = FALSE WHERE is_active = TRUE AND id != ?`, [id]);
     }

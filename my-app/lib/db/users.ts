@@ -1,12 +1,6 @@
-// ============================================
-// USER DATABASE OPERATIONS
-// Helper functions untuk CRUD operations pada tabel users
-// ============================================
-
-import { query, queryOne, execute } from '../db';
+import { query, queryOne, execute } from '../db-json';
 import type { User, UserCreate, UserUpdate } from '../types/database';
 
-// Get user by ID
 export async function getUserById(id: number): Promise<User | null> {
   return queryOne<User>(
     `SELECT * FROM users WHERE id = ? AND deleted_at IS NULL`,
@@ -14,7 +8,6 @@ export async function getUserById(id: number): Promise<User | null> {
   );
 }
 
-// Get user by username, email, or nisn
 export async function getUserByIdentifier(
   identifier: string,
   role?: string
@@ -60,7 +53,6 @@ export async function getAllUsers(
   return query<User>(sql, params);
 }
 
-// Get all siswa
 export async function getAllSiswa(
   kelas?: string,
   jurusan?: string
@@ -83,7 +75,6 @@ export async function getAllSiswa(
   return query<User>(sql, params);
 }
 
-// Create new user
 export async function createUser(userData: UserCreate): Promise<number> {
   const fields = Object.keys(userData).join(', ');
   const placeholders = Object.keys(userData).map(() => '?').join(', ');
@@ -97,7 +88,6 @@ export async function createUser(userData: UserCreate): Promise<number> {
   return result.insertId;
 }
 
-// Update user
 export async function updateUser(
   id: number,
   userData: UserUpdate
@@ -119,7 +109,6 @@ export async function updateUser(
   return result.affectedRows > 0;
 }
 
-// Delete user (soft delete)
 export async function deleteUser(id: number): Promise<boolean> {
   const result = await execute(
     `UPDATE users SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL`,
@@ -129,13 +118,11 @@ export async function deleteUser(id: number): Promise<boolean> {
   return result.affectedRows > 0;
 }
 
-// Hard delete user (permanent)
 export async function hardDeleteUser(id: number): Promise<boolean> {
   const result = await execute(`DELETE FROM users WHERE id = ?`, [id]);
   return result.affectedRows > 0;
 }
 
-// Update last login
 export async function updateLastLogin(id: number): Promise<boolean> {
   const result = await execute(
     `UPDATE users SET last_login = NOW() WHERE id = ?`,
@@ -145,7 +132,6 @@ export async function updateLastLogin(id: number): Promise<boolean> {
   return result.affectedRows > 0;
 }
 
-// Check if username exists
 export async function usernameExists(username: string): Promise<boolean> {
   const user = await queryOne<User>(
     `SELECT id FROM users WHERE username = ? AND deleted_at IS NULL`,
@@ -154,7 +140,6 @@ export async function usernameExists(username: string): Promise<boolean> {
   return user !== null;
 }
 
-// Check if email exists
 export async function emailExists(email: string): Promise<boolean> {
   const user = await queryOne<User>(
     `SELECT id FROM users WHERE email = ? AND deleted_at IS NULL`,

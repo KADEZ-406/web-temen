@@ -48,21 +48,21 @@ export default function Footer() {
             <div className="flex justify-center md:justify-start space-x-4">
               <a
                 href="#"
-                className="text-gray-400 hover:text-blue-600  transition-colors duration-300"
+                className="text-gray-400 hover:text-[#778873]  transition-colors duration-300"
                 aria-label="Instagram"
               >
                 Instagram
               </a>
               <a
                 href="#"
-                className="text-gray-400 hover:text-blue-600  transition-colors duration-300"
+                className="text-gray-400 hover:text-[#778873]  transition-colors duration-300"
                 aria-label="Facebook"
               >
                 Facebook
               </a>
               <a
                 href="#"
-                className="text-gray-400 hover:text-blue-600  transition-colors duration-300"
+                className="text-gray-400 hover:text-[#778873]  transition-colors duration-300"
                 aria-label="Twitter"
               >
                 Twitter

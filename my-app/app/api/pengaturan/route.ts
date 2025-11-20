@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, execute } from '@/lib/db';
 import type { PengaturanUser, ApiResponse } from '@/lib/types/database';
 
-// GET: Ambil pengaturan user
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -21,7 +20,6 @@ export async function GET(request: NextRequest) {
     );
 
     if (!pengaturan) {
-      // Return default settings
       return NextResponse.json<ApiResponse<PengaturanUser>>({
         success: true,
         data: {
@@ -50,7 +48,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PATCH: Update pengaturan user
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
@@ -85,7 +82,6 @@ export async function PATCH(request: NextRequest) {
     );
 
     if (result.affectedRows === 0) {
-      // Create if not exists
       await execute(
         `INSERT INTO pengaturan_user (user_id, notifikasi_aktif, notifikasi_email, tema_preferensi, bahasa) 
          VALUES (?, ?, ?, ?, ?)`,

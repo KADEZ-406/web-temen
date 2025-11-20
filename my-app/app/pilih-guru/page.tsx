@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import type { GuruBK, LayananBK } from "@/lib/types";
 
-export default function PilihGuruPage() {
+function PilihGuruContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const guruId = searchParams.get('guru_id');
@@ -23,21 +23,45 @@ export default function PilihGuruPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [availableSlots, setAvailableSlots] = useState<Array<{start: string, end: string}>>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
       setUser(JSON.parse(userData));
     } else {
-      router.push('/login/user');
+      router.push('/login');
       return;
+    }
+
+    const tanggalParam = searchParams.get('tanggal');
+    const waktuMulaiParam = searchParams.get('waktu_mulai');
+    const waktuSelesaiParam = searchParams.get('waktu_selesai');
+
+    if (tanggalParam) {
+      setTanggal(tanggalParam);
+    }
+    if (waktuMulaiParam) {
+      setWaktuMulai(waktuMulaiParam);
+    }
+    if (waktuSelesaiParam) {
+      setWaktuSelesai(waktuSelesaiParam);
     }
 
     if (guruId) {
       fetchGuru(parseInt(guruId));
     }
     fetchLayanan();
-  }, [guruId, router]);
+  }, [guruId, router, searchParams]);
+
+  useEffect(() => {
+    if (tanggal && guruId) {
+      fetchAvailableSlots(parseInt(guruId), tanggal);
+    } else {
+      setAvailableSlots([]);
+    }
+  }, [tanggal, guruId]);
 
   const fetchGuru = async (id: number) => {
     try {
@@ -68,6 +92,27 @@ export default function PilihGuruPage() {
     } catch (error) {
       console.error('Error fetching layanan:', error);
     }
+  };
+
+  const fetchAvailableSlots = async (guruId: number, tanggal: string) => {
+    try {
+      setLoadingSlots(true);
+      const response = await fetch(`/api/guru/${guruId}/jadwal-tersedia?tanggal=${tanggal}`);
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setAvailableSlots(data.data.available_slots || []);
+      }
+    } catch (error) {
+      console.error('Error fetching available slots:', error);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  const selectSlot = (start: string, end: string) => {
+    setWaktuMulai(start);
+    setWaktuSelesai(end);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,9 +153,8 @@ export default function PilihGuruPage() {
 
       if (data.success) {
         setSuccess(true);
-        // Redirect setelah 2 detik
         setTimeout(() => {
-          router.push('/home/dasboard');
+          router.push('/home');
         }, 2000);
       } else {
         setError(data.message || 'Gagal membuat jadwal konseling');
@@ -125,10 +169,10 @@ export default function PilihGuruPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-800 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-400 ">Memuat data...</p>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#778873]"></div>
+          <p className="mt-4 text-[#778873]/70">Memuat data...</p>
         </div>
       </div>
     );
@@ -136,10 +180,10 @@ export default function PilihGuruPage() {
 
   if (!guru) {
     return (
-      <div className="min-h-screen bg-gray-800 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-400 mb-4">Guru tidak ditemukan</p>
-          <Link href="/home" className="text-blue-600  hover:underline">
+          <p className="text-[#778873]/70 mb-4">Guru tidak ditemukan</p>
+          <Link href="/home" className="text-[#778873] hover:underline">
             Kembali ke Home
           </Link>
         </div>
@@ -148,31 +192,20 @@ export default function PilihGuruPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-800 py-12 px-6 transition-colors duration-300">
-      {/* Theme Toggle */}
-      <div className="fixed top-4 right-4 z-50">
-        <div className="bg-gray-900/90  backdrop-blur-sm rounded-lg shadow-md transition-colors duration-300">
-          
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
+    <div className="min-h-screen bg-white py-12 px-6">
+      <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 transition-colors duration-300">
-            Buat Janji Konsultasi
-          </h1>
-          <p className="text-lg text-gray-300 max-w-3xl mx-auto transition-colors duration-300">
+          <h1 className="text-3xl font-bold text-[#778873] mb-4">Buat Janji Konsultasi</h1>
+          <p className="text-[#778873]/70">
             Lengkapi form di bawah untuk membuat jadwal konseling dengan {guru.nama_lengkap}
           </p>
         </div>
 
-        {/* Guru Info Card */}
-        <div className="bg-gray-900 rounded-2xl shadow-lg p-6 mb-8 border border-gray-700 ">
+        <div className="bg-white border border-[#A1BC98] rounded-lg p-6 mb-8">
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-blue-500  flex-shrink-0">
+            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#778873] shrink-0">
               <Image
-                src={guru.foto_profil || `https://ui-avatars.com/api/?name=${encodeURIComponent(guru.nama_lengkap)}&size=200&background=3b82f6&color=fff`}
+                src={guru.foto_profil || `https://ui-avatars.com/api/?name=${encodeURIComponent(guru.nama_lengkap)}&size=200&background=2563eb&color=fff`}
                 alt={guru.nama_lengkap}
                 width={80}
                 height={80}
@@ -181,38 +214,36 @@ export default function PilihGuruPage() {
               />
             </div>
             <div>
-              <h3 className="text-2xl font-bold text-white ">{guru.nama_lengkap}</h3>
-              <p className="text-gray-400 ">{guru.spesialisasi}</p>
+              <h3 className="text-xl font-semibold text-[#778873]">{guru.nama_lengkap}</h3>
+              <p className="text-[#778873]/70">{guru.spesialisasi}</p>
             </div>
           </div>
         </div>
 
-        {/* Form */}
-        <div className="bg-gray-900 rounded-2xl shadow-lg p-8 border border-gray-700 ">
+        <div className="bg-white border border-[#A1BC98] rounded-lg p-8">
           {success && (
-            <div className="bg-green-50  border border-green-200  text-green-700  px-4 py-3 rounded-lg mb-6">
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
               <p className="font-semibold">Jadwal konseling berhasil dibuat!</p>
               <p className="text-sm mt-1">Mengalihkan ke dashboard...</p>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50  border border-red-200  text-red-700  px-4 py-3 rounded-lg mb-6">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Pilih Layanan */}
             <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-[#778873] mb-2">
                 Pilih Layanan Konseling <span className="text-red-500">*</span>
               </label>
               <select
                 value={selectedLayanan || ''}
                 onChange={(e) => setSelectedLayanan(parseInt(e.target.value))}
                 required
-                className="w-full px-4 py-3 border-2 border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-900 text-white "
+                className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
               >
                 <option value="">Pilih layanan...</option>
                 {layanan.map((lay) => (
@@ -223,9 +254,8 @@ export default function PilihGuruPage() {
               </select>
             </div>
 
-            {/* Tanggal */}
             <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-[#778873] mb-2">
                 Tanggal Konseling <span className="text-red-500">*</span>
               </label>
               <input
@@ -234,42 +264,52 @@ export default function PilihGuruPage() {
                 onChange={(e) => setTanggal(e.target.value)}
                 required
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-3 border-2 border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-900 text-white "
+                className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
               />
             </div>
 
-            {/* Waktu */}
-            <div className="grid md:grid-cols-2 gap-4">
+            {tanggal && (
               <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">
-                  Waktu Mulai <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-[#778873] mb-2">
+                  Pilih Waktu Tersedia <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="time"
-                  value={waktuMulai}
-                  onChange={(e) => setWaktuMulai(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-900 text-white "
-                />
+                {loadingSlots ? (
+                  <div className="text-center py-4 text-[#778873]/70">Memuat slot waktu...</div>
+                ) : availableSlots.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {availableSlots.map((slot, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => selectSlot(slot.start, slot.end)}
+                        className={`px-4 py-2 border rounded transition-colors ${
+                          waktuMulai === slot.start && waktuSelesai === slot.end
+                            ? 'bg-[#778873] text-white border-[#778873]'
+                            : 'bg-white border-[#A1BC98] text-[#778873] hover:bg-[#F1F3E0]'
+                        }`}
+                      >
+                        {slot.start} - {slot.end}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-[#778873]/70">
+                    Tidak ada slot waktu tersedia untuk tanggal ini. Silakan pilih tanggal lain.
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">
-                  Waktu Selesai <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="time"
-                  value={waktuSelesai}
-                  onChange={(e) => setWaktuSelesai(e.target.value)}
-                  required
-                  min={waktuMulai}
-                  className="w-full px-4 py-3 border-2 border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-900 text-white "
-                />
-              </div>
-            </div>
+            )}
 
-            {/* Alasan */}
+            {waktuMulai && waktuSelesai && (
+              <div className="bg-[#F1F3E0] border border-[#A1BC98] rounded p-4">
+                <p className="text-sm text-[#778873]">
+                  <span className="font-semibold">Waktu yang dipilih:</span> {waktuMulai} - {waktuSelesai}
+                </p>
+              </div>
+            )}
+
             <div>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-[#778873] mb-2">
                 Alasan Konseling <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -277,23 +317,22 @@ export default function PilihGuruPage() {
                 onChange={(e) => setAlasan(e.target.value)}
                 required
                 rows={5}
-                className="w-full px-4 py-3 border-2 border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-900 text-white resize-none"
+                className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none resize-none"
                 placeholder="Jelaskan alasan Anda memerlukan konseling..."
               />
             </div>
 
-            {/* Submit Button */}
             <div className="flex gap-4">
               <Link
                 href="/home"
-                className="flex-1 px-4 py-3 bg-gray-200  hover:bg-gray-600 text-white rounded-lg font-semibold text-center transition-colors duration-300"
+                className="flex-1 px-4 py-2 border border-[#778873] text-[#778873] rounded hover:bg-[#F1F3E0] text-center transition-colors"
               >
                 Batal
               </Link>
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-[#778873] hover:bg-[#778873] text-white rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Menyimpan...' : 'Buat Jadwal Konseling'}
               </button>
@@ -302,5 +341,20 @@ export default function PilihGuruPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PilihGuruPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#778873]"></div>
+          <p className="mt-4 text-[#778873]/70">Memuat...</p>
+        </div>
+      </div>
+    }>
+      <PilihGuruContent />
+    </Suspense>
   );
 }

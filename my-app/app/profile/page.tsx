@@ -3,12 +3,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/app/contexts/ToastContext";
 import type { HistoryKonselingWithRelations, User, PengaturanUser } from "@/lib/types";
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const toast = useToast();
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [name, setName] = useState('John Doe');
@@ -17,34 +22,25 @@ export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [history, setHistory] = useState<HistoryKonselingWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pengaturan, setPengaturan] = useState<PengaturanUser | null>(null);
+  const [, setPengaturan] = useState<PengaturanUser | null>(null);
+  const [passwordData, setPasswordData] = useState({
+    password_lama: '',
+    password_baru: '',
+    password_baru_confirm: '',
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // Load user data
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Load user data from localStorage
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        setName(parsedUser.nama_lengkap || 'John Doe');
-        setNisn(parsedUser.nisn || '1234567890');
-        setProfileImage(parsedUser.foto_profil);
-        fetchHistory(parsedUser.id);
-        fetchPengaturan(parsedUser.id);
-      } else {
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  const fetchHistory = async (userId: number) => {
+  const fetchHistory = async (userId: number, userRole: string) => {
     try {
-      const response = await fetch(`/api/history?siswa_id=${userId}&limit=20`);
-      const data = await response.json();
-      
-      if (data.success && data.data) {
-        setHistory(data.data);
+      if (userRole === 'siswa') {
+        const response = await fetch(`/api/history?siswa_id=${userId}&limit=20`);
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          setHistory(data.data);
+        }
+      } else {
+        setHistory([]);
       }
     } catch (error) {
       console.error('Error fetching history:', error);
@@ -52,6 +48,31 @@ export default function ProfilePage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        setName(parsedUser.nama_lengkap || 'John Doe');
+        setNisn(parsedUser.nisn || '1234567890');
+        setProfileImage(parsedUser.foto_profil);
+        fetchHistory(parsedUser.id, parsedUser.role);
+        fetchPengaturan(parsedUser.id);
+        
+        if (parsedUser.role === 'siswa') {
+          const interval = setInterval(() => {
+            fetchHistory(parsedUser.id, parsedUser.role);
+          }, 30000);
+          
+          return () => clearInterval(interval);
+        }
+      } else {
+        setLoading(false);
+      }
+    }
+  }, []);
 
   const fetchPengaturan = async (userId: number) => {
     try {
@@ -67,316 +88,602 @@ export default function ProfilePage() {
       console.error('Error fetching pengaturan:', error);
     }
   };
+
+  const getStatusLabel = (status: string) => {
+    const labels: { [key: string]: string } = {
+      'selesai': 'Selesai',
+      'dibatalkan': 'Dibatalkan',
+      'berlangsung': 'Berlangsung',
+      'dijadwalkan': 'Dijadwalkan',
+      'menunggu': 'Menunggu'
+    };
+    return labels[status] || 'Tidak Diketahui';
+  };
+
+  const getStatusColor = () => {
+    return 'bg-[#D2DCB6] text-[#778873]';
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#778873]"></div>
+          <p className="mt-4 text-[#778873]/70">Memuat profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-[#778873]/70 mb-4">Anda belum login</p>
+          <Link href="/login" className="text-[#778873] hover:underline">
+            Login terlebih dahulu
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-900 transition-colors duration-300">
-      {/* Gooey Navigation */}
-      <nav className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-[95%] max-w-6xl">
-        <div className="relative gooey-nav overflow-hidden">
-          {/* Animated Blobs */}
-          <div className="gooey-blob gooey-blob-1"></div>
-          <div className="gooey-blob gooey-blob-2"></div>
-          
-          <div className="relative z-10 container mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <Link href="/" className="flex items-center gap-3 group">
-                <div className="relative w-12 h-12 transition-transform group-hover:scale-110">
-                  <Image
-                    src="https://smktarunabhakti.sch.id/wp-content/uploads/2020/07/logotbvector-copy.png"
-                    alt="Logo SMK Taruna Bhakti"
-                    width={48}
-                    height={48}
-                    className="object-contain"
-                    priority
-                    unoptimized
-                  />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-white ">Bimbingan Konseling</div>
-                  <div className="text-xs text-gray-400 ">SMK Taruna Bhakti</div>
-                </div>
-              </Link>
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/home"
-                  className="px-5 py-2.5 rounded-xl text-gray-300 hover:text-blue-600  hover:bg-blue-50  transition-all duration-300 font-medium relative group"
-                >
-                  Home
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
-                </Link>
-                <Link
-                  href="/home/dasboard"
-                  className="px-5 py-2.5 rounded-xl text-gray-300 hover:text-blue-600  hover:bg-blue-50  transition-all duration-300 font-medium relative group"
-                >
-                  Dashboard
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
-                </Link>
-                <Link
-                  href="/profile"
-                  className="px-5 py-2.5 rounded-xl text-blue-600  font-semibold bg-blue-50  relative group"
-                >
-                  Profile
-                  <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-                </Link>
-                <div className="ml-2 pl-2 border-l border-gray-600 ">
-                  
-                </div>
+    <div className="min-h-screen bg-white">
+      {/* Simple Navbar */}
+      <nav className="border-b border-[#A1BC98] bg-white sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="relative w-10 h-10">
+                <Image
+                  src="https://smktarunabhakti.sch.id/wp-content/uploads/2020/07/logotbvector-copy.png"
+                  alt="Logo SMK Taruna Bhakti"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  priority
+                  unoptimized
+                />
               </div>
+              <div className="text-sm font-semibold text-[#778873]">
+                Profile
+              </div>
+            </Link>
+            <div className="flex items-center gap-3">
+              {user?.role === 'guru' ? (
+                <>
+                  <Link
+                    href="/guru/dashboard"
+                    className="px-4 py-2 text-[#778873] hover:text-[#778873]"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/guru/jadwal"
+                    className="px-4 py-2 text-[#778873] hover:text-[#778873]"
+                  >
+                    Jadwal
+                  </Link>
+                  <Link
+                    href="/guru/pengaturan"
+                    className="px-4 py-2 text-[#778873] hover:text-[#778873]"
+                  >
+                    Pengaturan
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="px-4 py-2 text-[#778873] border border-[#778873] rounded hover:bg-[#778873] hover:text-white transition-colors"
+                  >
+                    Profile
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href={
+                      user?.role === 'siswa' 
+                        ? '/home' 
+                        : user?.role === 'admin'
+                        ? '/admin'
+                        : '/home'
+                    }
+                    className="px-4 py-2 text-[#778873] hover:text-[#778873]"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="px-4 py-2 text-[#778873] border border-[#778873] rounded hover:bg-[#778873] hover:text-white transition-colors"
+                  >
+                    Profile
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto px-6 py-12 pt-32">
-        <div className="max-w-4xl mx-auto">
-          {/* Profile Header */}
-          <div className="bg-gray-900 rounded-2xl shadow-xl overflow-hidden mb-6 border border-gray-700 ">
-            <div className="h-32 relative">
-              <Image
-                src="https://lh3.googleusercontent.com/gps-cs-s/AG0ilSwmtMlJl_cZDFJKXP6TlQ3BKtxaceL1YGDvr3vToK0vwFjRjYCm1vSBrwYU06ISxE9jOqVAgr0LCHYnA_WLUVSaySoG4y8DLNuLLZMLm2E_XF6vQgFJQtSD_zwTOpyXolHGmxsclQ=s1360-w1360-h1020-rw"
-                alt="Background"
-                fill
-                className="object-cover"
-                priority
-                unoptimized
-              />
-              <div className="absolute inset-0 backdrop-blur-sm bg-gray-900/40 "></div>
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        {/* Profile Header */}
+        <div className="bg-white border border-[#A1BC98] rounded-lg p-8 mb-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#778873] shrink-0">
+              {profileImage ? (
+                <Image
+                  src={profileImage}
+                  alt={name}
+                  width={96}
+                  height={96}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full bg-[#778873] flex items-center justify-center text-3xl font-bold text-white">
+                  {name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                </div>
+              )}
             </div>
-            <div className="px-8 pb-8 -mt-16 relative z-10">
-              <div className="flex flex-col md:flex-row items-start md:items-end gap-6">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-600 to-blue-400 p-1">
-                  {profileImage ? (
-                    <div className="w-full h-full rounded-full overflow-hidden">
-                      <Image
-                        src={profileImage}
-                        alt={name}
-                        width={128}
-                        height={128}
-                        className="w-full h-full object-cover"
-                        unoptimized
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-full rounded-full bg-gray-900 flex items-center justify-center text-4xl font-bold text-blue-600 ">
-                      {name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <h1 className="text-3xl font-bold text-white mb-2">{name}</h1>
-                  <p className="text-gray-400 ">NISN: {nisn}</p>
-                  {user && (
-                    <div className="mt-2 text-sm text-gray-500 ">
-                      {user.kelas && <span>Kelas: {user.kelas}</span>}
-                      {user.jurusan && <span className="ml-4">Jurusan: {user.jurusan}</span>}
-                    </div>
-                  )}
-                </div>
-                <button 
-                  onClick={() => setIsEditProfileOpen(true)}
-                  className="px-6 py-2 bg-gradient-to-r from-blue-700 to-blue-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
-                >
-                  Edit Profile
-                </button>
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-[#778873] mb-2">{name}</h1>
+              {user.role === 'siswa' && user.nisn && (
+                <p className="text-[#778873]/70 mb-1">NISN: {user.nisn}</p>
+              )}
+              {user.role === 'guru' && (
+                <p className="text-[#778873]/70 mb-1">Guru Bimbingan Konseling</p>
+              )}
+              {user.role === 'admin' && (
+                <p className="text-[#778873]/70 mb-1">Administrator</p>
+              )}
+              <div className="text-sm text-[#778873]/70 mt-2">
+                {user.kelas && <span>Kelas: {user.kelas}</span>}
+                {user.jurusan && <span className="ml-4">Jurusan: {user.jurusan}</span>}
+                {user.email && <span className="ml-4">Email: {user.email}</span>}
               </div>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setIsEditProfileOpen(true)}
+                className="px-4 py-2 bg-[#778873] hover:bg-[#778873] text-white rounded transition-colors"
+              >
+                Edit Profile
+              </button>
+              <button 
+                onClick={() => {
+                  if (confirm('Apakah Anda yakin ingin logout?')) {
+                    localStorage.removeItem('user');
+                    router.push('/');
+                  }
+                }}
+                className="px-4 py-2 border border-[#778873] text-[#778873] hover:bg-[#F1F3E0] rounded transition-colors"
+              >
+                Logout
+              </button>
             </div>
           </div>
+        </div>
 
-          {/* Stats Cards */}
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            <div className="bg-gray-900 rounded-xl shadow-lg p-6 border border-gray-700 ">
-              <div className="text-3xl font-bold text-blue-600  mb-2">
-                {loading ? '...' : history.length}
-              </div>
-              <div className="text-gray-400 ">Sesi Konseling</div>
+        {/* Stats Cards */}
+        {user.role === 'siswa' && (
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            <div className="bg-[#F1F3E0] border border-[#A1BC98] rounded p-6">
+              <div className="text-3xl font-bold text-[#778873] mb-1">{history.length}</div>
+              <div className="text-sm text-[#778873]/70">Sesi Konseling</div>
             </div>
-            <div className="bg-gray-900 rounded-xl shadow-lg p-6 border border-gray-700 ">
-              <div className="text-3xl font-bold text-blue-600  mb-2">
-                {loading ? '...' : history.filter(h => h.status === 'selesai').length}
-              </div>
-              <div className="text-gray-400 ">Konseling Selesai</div>
+            <div className="bg-[#F1F3E0] border border-[#A1BC98] rounded p-6">
+              <div className="text-3xl font-bold text-[#778873] mb-1">{history.filter(h => h.status === 'selesai').length}</div>
+              <div className="text-sm text-[#778873]/70">Konseling Selesai</div>
             </div>
           </div>
+        )}
 
-          {/* History Konseling Section */}
-          <div className="bg-gray-900 rounded-xl shadow-lg p-6 border border-gray-700 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white ">History Konseling</h2>
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-blue-600 " fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm text-gray-400 ">Total: {history.length} sesi</span>
-              </div>
+        {/* History Konseling - Hanya untuk siswa */}
+        {user.role === 'siswa' && (
+          <div className="bg-white border border-[#A1BC98] rounded-lg mb-6">
+            <div className="px-6 py-4 border-b border-[#A1BC98]">
+              <h2 className="text-xl font-semibold text-[#778873]">History Konseling</h2>
             </div>
-            
             {loading ? (
-              <div className="text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-4 text-gray-500 ">Memuat history...</p>
+              <div className="p-12 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#778873]"></div>
+                <p className="mt-4 text-[#778873]/70">Memuat history...</p>
+              </div>
+            ) : history.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-[#778873]/70">Belum ada history konseling</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="divide-y divide-[#D2DCB6]">
                 {history.map((item) => (
-                  <div
-                    key={item.id}
-                    className="border-l-4 border-blue-500  bg-gray-800 rounded-r-lg p-5 hover:shadow-md transition-all duration-300"
-                  >
+                  <div key={item.id} className="px-6 py-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            {item.nama_guru?.split(' ').map((n: string) => n[0]).join('') || 'GK'}
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-white text-lg">
-                              {item.nama_guru || 'Guru BK'}
-                            </h3>
-                            <p className="text-sm text-blue-600  font-medium">
-                              {item.nama_layanan || 'Konseling'}
-                            </p>
-                          </div>
+                        <div className="font-medium text-[#778873] mb-1">{item.nama_guru || 'Guru BK'}</div>
+                        <div className="text-sm text-[#778873]/70 mb-1">{item.nama_layanan || 'Konseling'}</div>
+                        <div className="text-sm text-[#778873]/70">
+                          {new Date(item.tanggal_konseling).toLocaleDateString('id-ID', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })} • {item.waktu_mulai} - {item.waktu_selesai}
                         </div>
+                        {item.alasan_konseling && (
+                          <div className="mt-2 text-sm text-[#778873]/70">
+                            <span className="font-medium">Alasan: </span>{item.alasan_konseling}
+                          </div>
+                        )}
                       </div>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          item.status === 'selesai'
-                            ? 'bg-green-100 text-green-700'
-                            : item.status === 'dibatalkan'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-gray-800 text-gray-700'
-                        }`}
-                      >
-                        {item.status === 'selesai' ? 'Selesai' : item.status === 'dibatalkan' ? 'Dibatalkan' : 'Tidak Hadir'}
+                      <span className={`px-3 py-1 rounded text-xs font-medium ${getStatusColor()}`}>
+                        {getStatusLabel(item.status as string)}
                       </span>
                     </div>
-                    
-                    <div className="grid md:grid-cols-2 gap-4 mb-3">
-                      <div className="flex items-center gap-2 text-gray-400 ">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-sm font-medium">
-                          {new Date(item.tanggal_konseling).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-400 ">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="text-sm font-medium">{item.waktu_mulai} - {item.waktu_selesai}</span>
-                      </div>
-                    </div>
-                    
-                    {item.alasan_konseling && (
-                      <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 ">
-                        <div className="flex items-start gap-2">
-                          <svg className="w-5 h-5 text-blue-600  mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                          </svg>
-                          <div>
-                            <p className="text-xs font-semibold text-gray-500  uppercase tracking-wide mb-1">
-                              Alasan Konseling
-                            </p>
-                            <p className="text-sm text-gray-300 leading-relaxed">
-                              {item.alasan_konseling}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {item.catatan_guru && (
-                      <div className="bg-blue-50  rounded-lg p-4 border border-blue-200  mt-3">
-                        <p className="text-xs font-semibold text-blue-700  uppercase tracking-wide mb-1">
-                          Catatan Guru
-                        </p>
-                        <p className="text-sm text-blue-900  leading-relaxed">
-                          {item.catatan_guru}
-                        </p>
-                      </div>
-                    )}
-
-                    {item.rating && (
-                      <div className="mt-3 flex items-center gap-2">
-                        <span className="text-sm text-gray-400 ">Rating:</span>
-                        <div className="flex">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <svg
-                              key={star}
-                              className={`w-5 h-5 ${star <= item.rating! ? 'text-yellow-400' : 'text-gray-300'}`}
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
             )}
-            
-            {!loading && history.length === 0 && (
-              <div className="text-center py-12">
-                <svg className="w-16 h-16 mx-auto text-gray-400  mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <p className="text-gray-500 ">Belum ada history konseling</p>
-              </div>
-            )}
           </div>
+        )}
 
-          {/* Pengaturan Section */}
-          <div className="bg-gray-900 rounded-xl shadow-lg p-6 border border-gray-700 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white ">Pengaturan</h2>
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors duration-300 text-sm"
-              >
-                Buka Pengaturan
-              </button>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
-                <div>
-                  <p className="font-medium text-white ">Notifikasi</p>
-                  <p className="text-sm text-gray-400 ">{notifications ? 'Aktif' : 'Nonaktif'}</p>
-                </div>
-                <div className={`w-3 h-3 rounded-full ${notifications ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
-                <div>
-                  <p className="font-medium text-white ">Notifikasi Email</p>
-                  <p className="text-sm text-gray-400 ">{emailNotifications ? 'Aktif' : 'Nonaktif'}</p>
-                </div>
-                <div className={`w-3 h-3 rounded-full ${emailNotifications ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-              </div>
-            </div>
+        {/* Actions */}
+        <div className="bg-white border border-[#A1BC98] rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-[#778873] mb-4">Pengaturan</h3>
+          <div className="space-y-3">
+            <button
+              onClick={() => setIsChangePasswordOpen(true)}
+              className="w-full px-4 py-2 border border-[#778873] text-[#778873] rounded hover:bg-[#F1F3E0] transition-colors text-left"
+            >
+              Ubah Password
+            </button>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="w-full px-4 py-2 border border-[#778873] text-[#778873] rounded hover:bg-[#F1F3E0] transition-colors text-left"
+            >
+              Pengaturan Notifikasi
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Modal Pengaturan */}
-      {isSettingsOpen && (
+      {/* Modal Edit Profile */}
+      {isEditProfileOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setIsSettingsOpen(false)}
+          className="fixed inset-0 bg-[#778873]/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setIsEditProfileOpen(false)}
         >
           <div 
-            className="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-2xl w-full border border-gray-700 "
+            className="bg-white rounded-lg p-8 max-w-2xl w-full border border-[#A1BC98]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white ">
-                Pengaturan Profil
-              </h2>
+              <h2 className="text-2xl font-bold text-[#778873]">Edit Profile</h2>
+              <button
+                onClick={() => setIsEditProfileOpen(false)}
+                className="text-[#778873]/70 hover:text-[#778873]"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!user) return;
+
+              try {
+                const response = await fetch(`/api/users/${user.id}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    email: user.email,
+                    foto_profil: profileImage,
+                    nama_lengkap: name,
+                    alamat: user.alamat,
+                    no_telepon: user.no_telepon,
+                    kelas: user.kelas,
+                    jurusan: user.jurusan,
+                  }),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                  toast.success('Profil berhasil diperbarui!');
+                  if (data.data) {
+                    localStorage.setItem('user', JSON.stringify(data.data));
+                    setUser(data.data);
+                  }
+                  setIsEditProfileOpen(false);
+                } else {
+                  toast.error(data.message || 'Gagal memperbarui profil');
+                }
+              } catch (error) {
+                console.error('Error updating profile:', error);
+                toast.error('Terjadi kesalahan saat memperbarui profil');
+              }
+            }} className="space-y-4">
+              <div className="flex flex-col items-center mb-6">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#778873] mb-4">
+                  {profileImage ? (
+                    <Image
+                      src={profileImage}
+                      alt={name}
+                      width={96}
+                      height={96}
+                      className="w-full h-full object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#778873] flex items-center justify-center text-2xl font-bold text-white">
+                      {name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setProfileImage(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <span className="px-4 py-2 bg-[#778873] hover:bg-[#778873] text-white rounded text-sm transition-colors">
+                    Ubah Foto
+                  </span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#778873] mb-2">Nama Lengkap</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#778873] mb-2">Email</label>
+                <input
+                  type="email"
+                  value={user.email || ''}
+                  onChange={(e) => setUser({...user, email: e.target.value})}
+                  className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+                />
+              </div>
+
+              {user.role === 'siswa' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-[#778873] mb-2">NISN</label>
+                    <input
+                      type="text"
+                      value={nisn}
+                      onChange={(e) => setNisn(e.target.value)}
+                      className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+                      readOnly
+                    />
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#778873] mb-2">Kelas</label>
+                      <input
+                        type="text"
+                        value={user.kelas || ''}
+                        onChange={(e) => setUser({...user, kelas: e.target.value})}
+                        className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-[#778873] mb-2">Jurusan</label>
+                      <input
+                        type="text"
+                        value={user.jurusan || ''}
+                        onChange={(e) => setUser({...user, jurusan: e.target.value})}
+                        className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#778873] mb-2">No. Telepon</label>
+                    <input
+                      type="tel"
+                      value={user.no_telepon || ''}
+                      onChange={(e) => setUser({...user, no_telepon: e.target.value})}
+                      className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#778873] mb-2">Alamat</label>
+                    <textarea
+                      value={user.alamat || ''}
+                      onChange={(e) => setUser({...user, alamat: e.target.value})}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none resize-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileOpen(false)}
+                  className="flex-1 px-4 py-2 border border-[#778873] text-[#778873] rounded hover:bg-[#F1F3E0] transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#778873] hover:bg-[#778873] text-white rounded transition-colors"
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ubah Password */}
+      {isChangePasswordOpen && (
+        <div 
+          className="fixed inset-0 bg-[#778873]/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setIsChangePasswordOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-lg p-8 max-w-2xl w-full border border-[#A1BC98]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-[#778873]">Ubah Password</h2>
+              <button
+                onClick={() => setIsChangePasswordOpen(false)}
+                className="text-[#778873]/70 hover:text-[#778873]"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!user) return;
+
+              if (passwordData.password_baru !== passwordData.password_baru_confirm) {
+                toast.warning('Password baru dan konfirmasi password tidak sama');
+                return;
+              }
+
+              if (passwordData.password_baru.length < 6) {
+                toast.warning('Password baru minimal 6 karakter');
+                return;
+              }
+
+              setIsChangingPassword(true);
+              try {
+                const response = await fetch('/api/users/password', {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    user_id: user.id,
+                    password_lama: passwordData.password_lama,
+                    password_baru: passwordData.password_baru,
+                    current_user_id: user.id,
+                    current_user_role: user.role,
+                  }),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                  toast.success('Password berhasil diubah!');
+                  setIsChangePasswordOpen(false);
+                  setPasswordData({
+                    password_lama: '',
+                    password_baru: '',
+                    password_baru_confirm: '',
+                  });
+                } else {
+                  toast.error(data.message || 'Gagal mengubah password');
+                }
+              } catch (error) {
+                console.error('Error changing password:', error);
+                toast.error('Terjadi kesalahan saat mengubah password');
+              } finally {
+                setIsChangingPassword(false);
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#778873] mb-2">Password Lama</label>
+                <input
+                  type="password"
+                  value={passwordData.password_lama}
+                  onChange={(e) => setPasswordData({ ...passwordData, password_lama: e.target.value })}
+                  className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+                  placeholder="Masukkan password lama"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#778873] mb-2">Password Baru</label>
+                <input
+                  type="password"
+                  value={passwordData.password_baru}
+                  onChange={(e) => setPasswordData({ ...passwordData, password_baru: e.target.value })}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+                  placeholder="Masukkan password baru (min. 6 karakter)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#778873] mb-2">Konfirmasi Password Baru</label>
+                <input
+                  type="password"
+                  value={passwordData.password_baru_confirm}
+                  onChange={(e) => setPasswordData({ ...passwordData, password_baru_confirm: e.target.value })}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
+                  placeholder="Konfirmasi password baru"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsChangePasswordOpen(false)}
+                  className="flex-1 px-4 py-2 border border-[#778873] text-[#778873] rounded hover:bg-[#F1F3E0] transition-colors"
+                  disabled={isChangingPassword}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#778873] hover:bg-[#778873] text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isChangingPassword}
+                >
+                  {isChangingPassword ? 'Mengubah...' : 'Ubah Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pengaturan */}
+      {isSettingsOpen && (
+        <div 
+          className="fixed inset-0 bg-[#778873]/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setIsSettingsOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-lg p-8 max-w-2xl w-full border border-[#A1BC98]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-[#778873]">Pengaturan Notifikasi</h2>
               <button
                 onClick={() => setIsSettingsOpen(false)}
-                className="text-gray-500  hover:text-gray-300 "
+                className="text-[#778873]/70 hover:text-[#778873]"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -404,43 +711,42 @@ export default function ProfilePage() {
 
                 const data = await response.json();
                 if (data.success) {
-                  alert('Pengaturan berhasil disimpan!');
+                  toast.success('Pengaturan berhasil disimpan!');
                   setIsSettingsOpen(false);
                   fetchPengaturan(user.id);
                 } else {
-                  alert('Gagal menyimpan pengaturan');
+                  toast.error('Gagal menyimpan pengaturan');
                 }
               } catch (error) {
                 console.error('Error saving settings:', error);
-                alert('Terjadi kesalahan saat menyimpan pengaturan');
+                toast.error('Terjadi kesalahan saat menyimpan pengaturan');
               }
-            }} className="space-y-6">
-              {/* Notifikasi */}
-              <div className="bg-gray-800 rounded-lg p-5">
-                <h3 className="text-lg font-semibold text-white mb-4">Notifikasi</h3>
+            }} className="space-y-4">
+              <div className="bg-[#F1F3E0] rounded-lg p-5">
+                <h3 className="text-lg font-semibold text-[#778873] mb-4">Notifikasi</h3>
                 <div className="space-y-4">
                   <label className="flex items-center justify-between">
                     <div>
-                      <span className="text-sm font-medium text-gray-300 ">Aktifkan Notifikasi</span>
-                      <p className="text-xs text-gray-500 ">Terima notifikasi untuk jadwal dan aktivitas</p>
+                      <span className="text-sm font-medium text-[#778873]">Aktifkan Notifikasi</span>
+                      <p className="text-xs text-[#778873]/70">Terima notifikasi untuk jadwal dan aktivitas</p>
                     </div>
                     <input
                       type="checkbox"
                       checked={notifications}
                       onChange={(e) => setNotifications(e.target.checked)}
-                      className="w-5 h-5 text-blue-600 border-gray-600 rounded focus:ring-blue-500 bg-gray-900 "
+                      className="w-5 h-5 text-[#778873] border-[#A1BC98] rounded focus:ring-[#778873]"
                     />
                   </label>
                   <label className="flex items-center justify-between">
                     <div>
-                      <span className="text-sm font-medium text-gray-300 ">Notifikasi Email</span>
-                      <p className="text-xs text-gray-500 ">Kirim notifikasi melalui email</p>
+                      <span className="text-sm font-medium text-[#778873]">Notifikasi Email</span>
+                      <p className="text-xs text-[#778873]/70">Kirim notifikasi melalui email</p>
                     </div>
                     <input
                       type="checkbox"
                       checked={emailNotifications}
                       onChange={(e) => setEmailNotifications(e.target.checked)}
-                      className="w-5 h-5 text-blue-600 border-gray-600 rounded focus:ring-blue-500 bg-gray-900 "
+                      className="w-5 h-5 text-[#778873] border-[#A1BC98] rounded focus:ring-[#778873]"
                     />
                   </label>
                 </div>
@@ -450,137 +756,15 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setIsSettingsOpen(false)}
-                  className="flex-1 px-4 py-3 bg-gray-200  hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors duration-300"
+                  className="flex-1 px-4 py-2 border border-[#778873] text-[#778873] rounded hover:bg-[#F1F3E0] transition-colors"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors duration-300"
+                  className="flex-1 px-4 py-2 bg-[#778873] hover:bg-[#778873] text-white rounded transition-colors"
                 >
-                  Simpan Pengaturan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Edit Profile */}
-      {isEditProfileOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setIsEditProfileOpen(false)}
-        >
-          <div 
-            className="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-2xl w-full border border-gray-700 "
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white ">
-                Edit Profil
-              </h2>
-              <button
-                onClick={() => setIsEditProfileOpen(false)}
-                className="text-gray-500  hover:text-gray-300 "
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              alert('Profil berhasil diperbarui!');
-              setIsEditProfileOpen(false);
-            }} className="space-y-6">
-              {/* Foto Profil */}
-              <div className="flex flex-col items-center">
-                <div className="relative w-32 h-32 rounded-full bg-gradient-to-br from-blue-600 to-blue-400 p-1 mb-4">
-                  {profileImage ? (
-                    <div className="w-full h-full rounded-full overflow-hidden">
-                      <Image
-                        src={profileImage}
-                        alt={name}
-                        width={128}
-                        height={128}
-                        className="w-full h-full object-cover"
-                        unoptimized
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-full rounded-full bg-gray-900 flex items-center justify-center text-4xl font-bold text-blue-600 ">
-                      {name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setProfileImage(reader.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="hidden"
-                  />
-                  <span className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors duration-300 inline-block">
-                    Ubah Foto Profil
-                  </span>
-                </label>
-                <p className="text-xs text-gray-500  mt-2">Format: JPG, PNG (Max 2MB)</p>
-              </div>
-
-              {/* Nama */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">
-                  Nama Lengkap
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-900 text-white "
-                  placeholder="Masukkan nama lengkap"
-                />
-              </div>
-
-              {/* NISN */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-300 mb-2">
-                  NISN
-                </label>
-                <input
-                  type="text"
-                  value={nisn}
-                  onChange={(e) => setNisn(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 border-2 border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-900 text-white "
-                  placeholder="Masukkan NISN"
-                />
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsEditProfileOpen(false)}
-                  className="flex-1 px-4 py-3 bg-gray-200  hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors duration-300"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors duration-300"
-                >
-                  Simpan Perubahan
+                  Simpan
                 </button>
               </div>
             </form>
@@ -590,4 +774,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

@@ -33,15 +33,13 @@ export default function UserLoginPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Simpan user data ke localStorage
         localStorage.setItem('user', JSON.stringify(data.user));
-        // Redirect ke home
         router.push('/home');
       } else {
         setError(data.message || 'Login gagal');
       }
     } catch (err: any) {
-      setError('Terjadi kesalahan saat login. Pastikan database sudah terhubung.');
+      setError('Terjadi kesalahan saat login');
       console.error('Login error:', err);
     } finally {
       setLoading(false);
@@ -49,53 +47,36 @@ export default function UserLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        <Image
-          src="https://lh3.googleusercontent.com/gps-cs-s/AG0ilSwmtMlJl_cZDFJKXP6TlQ3BKtxaceL1YGDvr3vToK0vwFjRjYCm1vSBrwYU06ISxE9jOqVAgr0LCHYnA_WLUVSaySoG4y8DLNuLLZMLm2E_XF6vQgFJQtSD_zwTOpyXolHGmxsclQ=s1360-w1360-h1020-rw"
-          alt="Background"
-          fill
-          className="object-cover"
-          priority
-          unoptimized
-        />
-        <div className="absolute inset-0 bg-gray-900/50  backdrop-blur-sm"></div>
-      </div>
-      {/* Theme Toggle */}
-      <div className="absolute top-4 right-4 z-10">
-        
-      </div>
-
-      <div className="w-full max-w-md relative z-10">
-        {/* Logo/Header */}
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="relative w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+            <div className="relative w-16 h-16">
+              <Image
+                src="https://smktarunabhakti.sch.id/wp-content/uploads/2020/07/logotbvector-copy.png"
+                alt="Logo SMK Taruna Bhakti"
+                width={64}
+                height={64}
+                className="object-contain"
+                priority
+                unoptimized
+              />
             </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent mb-2">
-            Login Siswa
-          </h1>
-          <p className="text-gray-400 ">Masuk sebagai siswa untuk mengakses layanan BK</p>
+          <h1 className="text-3xl font-bold text-[#778873] mb-2">Login Siswa</h1>
+          <p className="text-[#778873]/70">Masuk sebagai siswa untuk mengakses layanan BK</p>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-gray-900 rounded-2xl shadow-2xl p-8 border-2 border-blue-200 ">
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">Masuk ke Akun Siswa</h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="bg-white border border-[#A1BC98] rounded-lg p-8">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50  border border-red-200  text-red-700  px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="nisn" className="block text-sm font-semibold text-gray-300 mb-2">
+              <label htmlFor="nisn" className="block text-sm font-medium text-[#778873] mb-2">
                 NISN
               </label>
               <input
@@ -104,13 +85,13 @@ export default function UserLoginPage() {
                 value={nisn}
                 onChange={(e) => setNisn(e.target.value)}
                 required
-                className="w-full px-4 py-3 border-2 border-blue-200  rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-900 text-white placeholder-gray-400"
+                className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
                 placeholder="Masukkan NISN Anda"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-300 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-[#778873] mb-2">
                 Password
               </label>
               <input
@@ -119,35 +100,29 @@ export default function UserLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 border-2 border-blue-200  rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-900 text-white placeholder-gray-400"
+                className="w-full px-4 py-2 border border-[#A1BC98] rounded focus:ring-2 focus:ring-[#778873] focus:border-[#778873] outline-none"
                 placeholder="••••••••"
               />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-blue-600 border-blue-300  rounded focus:ring-blue-500 bg-gray-900 "
-                />
-                <span className="ml-2 text-sm text-gray-400 ">Ingat saya</span>
-              </label>
-              <Link href="#" className="text-sm text-blue-600  hover:text-blue-700  font-medium">
-                Lupa password?
-              </Link>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-bold hover:shadow-xl hover:scale-[1.02] transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 bg-[#778873] hover:bg-[#778873] text-white rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Memproses...' : 'Masuk sebagai Siswa'}
+              {loading ? 'Memproses...' : 'Masuk'}
             </button>
           </form>
         </div>
+
         <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-gray-400 hover:text-blue-600  font-medium">
+          <p className="text-sm text-[#778873]/70 mb-2">
+            Belum punya akun?{' '}
+            <Link href="/register" className="text-[#778873] hover:underline font-medium">
+              Daftar di sini
+            </Link>
+          </p>
+          <Link href="/" className="text-sm text-[#778873]/70 hover:text-[#778873]">
             ← Kembali ke beranda
           </Link>
         </div>
@@ -155,5 +130,3 @@ export default function UserLoginPage() {
     </div>
   );
 }
-
-
