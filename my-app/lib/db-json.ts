@@ -17,8 +17,34 @@ interface Database {
   backup_log: any[];
 }
 
-const dataDir = join(process.cwd(), 'data');
-const filePath = join(dataDir, 'database.json');
+// Lazy initialization untuk menghindari error saat module loading
+let dataDir: string | null = null;
+let filePath: string | null = null;
+
+function getDataDir(): string {
+  if (!dataDir) {
+    try {
+      // Di Vercel, gunakan /tmp yang writable
+      const isVercel = process.env.VERCEL === '1';
+      if (isVercel) {
+        dataDir = '/tmp/data';
+      } else {
+        dataDir = join(process.cwd(), 'data');
+      }
+    } catch (error) {
+      console.error('Error getting data directory:', error);
+      dataDir = '/tmp/data'; // Fallback untuk Vercel
+    }
+  }
+  return dataDir;
+}
+
+function getFilePath(): string {
+  if (!filePath) {
+    filePath = join(getDataDir(), 'database.json');
+  }
+  return filePath;
+}
 
 const defaultData: Database = {
   users: [],
@@ -60,9 +86,12 @@ function loadDB(): Database {
   }
 
   // Local development - bisa write ke file
-  if (!existsSync(dataDir)) {
+  const currentDataDir = getDataDir();
+  const currentFilePath = getFilePath();
+  
+  if (!existsSync(currentDataDir)) {
     try {
-      mkdirSync(dataDir, { recursive: true });
+      mkdirSync(currentDataDir, { recursive: true });
     } catch (error) {
       console.error('Error creating data directory:', error);
       // Fallback to in-memory
@@ -74,7 +103,7 @@ function loadDB(): Database {
     }
   }
 
-  if (!existsSync(filePath)) {
+  if (!existsSync(currentFilePath)) {
     dbCache = JSON.parse(JSON.stringify(defaultData));
     initializeDefaultDataSync();
     try {
@@ -87,7 +116,7 @@ function loadDB(): Database {
   }
 
   try {
-    const fileContent = readFileSync(filePath, 'utf-8');
+    const fileContent = readFileSync(currentFilePath, 'utf-8');
     const parsed = JSON.parse(fileContent);
     
     if (!parsed.users || parsed.users.length === 0) {
@@ -133,7 +162,8 @@ function saveDB(): void {
   }
   
   try {
-    writeFileSync(filePath, JSON.stringify(dbCache, null, 2), 'utf-8');
+    const currentFilePath = getFilePath();
+    writeFileSync(currentFilePath, JSON.stringify(dbCache, null, 2), 'utf-8');
     cacheTimestamp = Date.now();
   } catch (error) {
     console.error('Error saving database:', error);

@@ -37,3 +37,7 @@ next-env.d.ts
 
 # database
 /data/database.json
+
+# large files
+*.zip
+../hacking-tools/
