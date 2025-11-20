@@ -47,14 +47,42 @@ function loadDB(): Database {
     return dbCache;
   }
 
+  // Check if we're in Vercel/production environment (read-only filesystem)
+  const isVercel = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+  
+  if (isVercel) {
+    // Di Vercel, filesystem read-only, gunakan in-memory database saja
+    if (!dbCache) {
+      dbCache = JSON.parse(JSON.stringify(defaultData));
+      initializeDefaultDataSync();
+    }
+    return dbCache!;
+  }
+
+  // Local development - bisa write ke file
   if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
+    try {
+      mkdirSync(dataDir, { recursive: true });
+    } catch (error) {
+      console.error('Error creating data directory:', error);
+      // Fallback to in-memory
+      if (!dbCache) {
+        dbCache = JSON.parse(JSON.stringify(defaultData));
+        initializeDefaultDataSync();
+      }
+      return dbCache!;
+    }
   }
 
   if (!existsSync(filePath)) {
     dbCache = JSON.parse(JSON.stringify(defaultData));
     initializeDefaultDataSync();
-    saveDB();
+    try {
+      saveDB();
+    } catch (error) {
+      console.error('Error saving initial database:', error);
+      // Continue with in-memory database
+    }
     return dbCache!;
   }
 
@@ -65,7 +93,11 @@ function loadDB(): Database {
     if (!parsed.users || parsed.users.length === 0) {
       dbCache = JSON.parse(JSON.stringify(defaultData));
       initializeDefaultDataSync();
-      saveDB();
+      try {
+        saveDB();
+      } catch (error) {
+        console.error('Error saving database:', error);
+      }
     } else {
       dbCache = parsed;
       cacheTimestamp = now;
@@ -76,7 +108,11 @@ function loadDB(): Database {
     console.error('Error loading database:', error);
     dbCache = JSON.parse(JSON.stringify(defaultData));
     initializeDefaultDataSync();
-    saveDB();
+    try {
+      saveDB();
+    } catch (error) {
+      console.error('Error saving fallback database:', error);
+    }
     return dbCache!;
   }
 }
@@ -86,12 +122,25 @@ function saveDB(): void {
     console.error('Error saving database: dbCache is null');
     return;
   }
+  
+  // Check if we're in Vercel/production environment (read-only filesystem)
+  const isVercel = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+  
+  if (isVercel) {
+    // Di Vercel, tidak bisa write ke file, hanya update cache timestamp
+    cacheTimestamp = Date.now();
+    return;
+  }
+  
   try {
     writeFileSync(filePath, JSON.stringify(dbCache, null, 2), 'utf-8');
     cacheTimestamp = Date.now();
   } catch (error) {
     console.error('Error saving database:', error);
-    throw error;
+    // Don't throw in production, just log the error
+    if (process.env.NODE_ENV === 'development') {
+      throw error;
+    }
   }
 }
 
@@ -875,4 +924,5 @@ export async function execute(sql: string, params?: any[]): Promise<any> {
 // Functions getUserByIdentifier, updateLastLogin, getAllSiswa, dan searchUsers 
 // telah dipindahkan ke lib/db/users.ts untuk menghindari duplicate exports
 
-loadDB();
+// Jangan panggil loadDB() di level module karena akan crash di Vercel (read-only filesystem)
+// Database akan di-load secara lazy saat pertama kali digunakan
